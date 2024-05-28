@@ -209,7 +209,7 @@ func (app App) AbortPipeline(pipelineId string, abortReason string) error {
 }
 
 // WaitForPipelines ...
-func (app App) WaitForPipelines(pipelineIds []string, statusChangeCallback func(build Build)) error {
+func (app App) WaitForPipelines(pipelineIds []string, statusChangeCallback func(pipeline Pipeline)) error {
 	failed := false
 	status := map[string]string{}
 	for {
@@ -220,9 +220,9 @@ func (app App) WaitForPipelines(pipelineIds []string, statusChangeCallback func(
 				return fmt.Errorf("failed to get build info, error: %s", err)
 			}
 
-			if status[pipelineId] != pipeline.StatusText {
-				statusChangeCallback(build)
-				status[pipelineId] = pipeline.StatusText
+			if status[pipelineId] != pipeline.Status {
+				statusChangeCallback(pipeline)
+				status[pipelineId] = pipeline.Status
 			}
 
 			if pipeline.IsRunning() {

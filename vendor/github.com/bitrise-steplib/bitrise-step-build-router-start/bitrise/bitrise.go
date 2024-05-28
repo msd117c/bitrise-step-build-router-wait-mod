@@ -31,22 +31,22 @@ func (pipeline Pipeline) IsRunning() bool {
 
 // IsSuccessful ...
 func (pipeline Pipeline) IsSuccessful() bool {
-	return build.Status == 1
+	return pipeline.Status == "succeeded"
 }
 
 // IsFailed ...
 func (pipeline Pipeline) IsFailed() bool {
-	return build.Status == 2
+	return pipeline.Status == "failed"
 }
 
 // IsAborted ...
 func (pipeline Pipeline) IsAborted() bool {
-	return build.Status == 3
+	return pipeline.Status == "aborted"
 }
 
 // IsAbortedWithSuccess ...
 func (pipeline Pipeline) IsAbortedWithSuccess() bool {
-	return build.Status == 4
+	return pipeline.Status == "succeeded_with_abort"
 }
 
 type pipelineResponse struct {

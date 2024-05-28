@@ -70,7 +70,7 @@ inputs:
           go to your **Account settings** page, and select the [**Security** tab](https://www.bitrise.io/me/profile#/security) on the left side.
       is_required: true
       is_sensitive: true
-  - buildslugs: $ROUTER_STARTED_BUILD_SLUGS
+  - pipelineids: $ROUTER_STARTED_BUILD_SLUGS
     opts:
       title: Build slugs
       summary: The build slug(s) to check. One build slug per line.

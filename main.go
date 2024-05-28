@@ -15,9 +15,8 @@ import (
 type Config struct {
 	AppSlug                string          `env:"BITRISE_APP_SLUG,required"`
 	AccessToken            stepconf.Secret `env:"access_token,required"`
-	BuildSlugs             string          `env:"buildslugs,required"`
-	BuildArtifactsSavePath string          `env:"build_artifacts_save_path"`
-	AbortBuildsOnFail      string          `env:"abort_on_fail"`
+	PipelineIds            string          `env:"pipelineids,required"`
+	AbortPipelinesOnFail   string          `env:"abort_on_fail"`
 	IsVerboseLog           bool            `env:"verbose,required"`
 }
 
@@ -41,56 +40,34 @@ func main() {
 
 	log.Infof("Waiting for builds:")
 
-	buildSlugs := strings.Split(cfg.BuildSlugs, "\n")
+	pipelineIds := strings.Split(cfg.PipelineIds, "\n")
 
-	if err := app.WaitForBuilds(buildSlugs, func(build bitrise.Build) {
+	if err := app.WaitForPipelines(pipelineIds, func(pipeline bitrise.Pipeline) {
 		var failReason string
-		var buildURL = fmt.Sprintf("(https://app.bitrise.io/build/%s)", build.Slug)
+		var pipelineURL = fmt.Sprintf("(https://app.bitrise.io/%s/pipelines/%s)", app.Slug, pipeline.Id)
 
-		if build.IsRunning() {
-			log.Printf("- %s %s %s", build.TriggeredWorkflow, build.StatusText, buildURL)
-		} else if build.IsSuccessful() {
-			log.Donef("- %s successful %s)", build.TriggeredWorkflow, buildURL)
-		} else if build.IsFailed() {
-			log.Errorf("- %s failed", build.TriggeredWorkflow)
+		if pipeline.IsRunning() {
+			log.Printf("- %s %s %s", pipeline.Name, pipeline.Status, pipelineURL)
+		} else if pipeline.IsSuccessful() {
+			log.Donef("- %s successful %s)", pipeline.Name, pipelineURL)
+		} else if pipeline.IsFailed() {
+			log.Errorf("- %s failed", pipeline.Name)
 			failReason = "failed"
-		} else if build.IsAborted() {
-			log.Warnf("- %s aborted", build.TriggeredWorkflow)
+		} else if pipeline.IsAborted() {
+			log.Warnf("- %s aborted", pipeline.Name)
 			failReason = "aborted"
-		} else if build.IsAbortedWithSuccess() {
-			log.Infof("- %s cancelled", build.TriggeredWorkflow)
+		} else if pipeline.IsAbortedWithSuccess() {
+			log.Infof("- %s cancelled", pipeline.Name)
 		}
 
-		if cfg.AbortBuildsOnFail == "yes" && (build.IsAborted() || build.IsFailed()) {
-			for _, buildSlug := range buildSlugs {
-				if buildSlug != build.Slug {
-					abortErr := app.AbortBuild(buildSlug, "Abort on Fail - Build [https://app.bitrise.io/build/"+build.Slug+"] "+failReason+"\nAuto aborted by parent build")
+		if cfg.AbortPipelinesOnFail == "yes" && (pipeline.IsAborted() || pipeline.IsFailed()) {
+			for _, pipelineId := range pipelineIds {
+				if pipelineId != pipeline.Id {
+					abortErr := app.AbortPipeline(pipelineId, "Abort on Fail - Pipeline [https://app.bitrise.io/"+app.slug+"/pipelines/"+pipeline.Id+"] "+failReason+"\nAuto aborted by parent pipeline")
 					if abortErr != nil {
-						log.Warnf("failed to abort build, error: %s", abortErr)
+						log.Warnf("failed to abort pipeline, error: %s", abortErr)
 					}
-					log.Donef("Build " + buildSlug + " aborted due to associated build failure")
-				}
-			}
-		}
-		if build.IsRunning() == false {
-			buildArtifactSaveDir := strings.TrimSpace(cfg.BuildArtifactsSavePath)
-			if buildArtifactSaveDir != "" {
-				artifactsResponse, err := build.GetBuildArtifacts(app)
-				if err != nil {
-					log.Warnf("failed to get build artifacts, error: %s", err)
-				}
-				for _, artifactSlug := range artifactsResponse.ArtifactSlugs {
-					artifactObj, err := build.GetBuildArtifact(app, artifactSlug.ArtifactSlug)
-					if err != nil {
-						log.Warnf("failed to get build artifact, error: %s", err)
-					}
-
-					fullBuildArtifactsSavePath := filepath.Join(buildArtifactSaveDir, artifactObj.Artifact.Title)
-					downloadErr := artifactObj.Artifact.DownloadArtifact(fullBuildArtifactsSavePath)
-					if downloadErr != nil {
-						log.Warnf("failed to download artifact, error: %s", downloadErr)
-					}
-					log.Donef("Downloaded: " + artifactObj.Artifact.Title + " to path " + strings.TrimSpace(fullBuildArtifactsSavePath))
+					log.Donef("Pipeline " + pipelineId + " aborted due to associated pipeline failure")
 				}
 			}
 		}
